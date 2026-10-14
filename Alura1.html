@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Floresta dos Segredos</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+            border: 1px solid #333;
+        }
+
+        h1 {
+            color: #4caf50;
+            text-align: center;
+            font-size: 24px;
+            margin-top: 0;
+        }
+
+        #status-panel {
+            display: flex;
+            justify-content: space-between;
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        #text-display {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            min-height: 120px;
+        }
+
+        #choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 4px;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #4caf50;
+            color: #000;
+            border-color: #4caf50;
+            font-weight: bold;
+        }
+
+        .highlight {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h1>A Floresta dos Segredos</h1>
+    
+    <!-- Painel de Status do Jogador -->
+    <div id="status-panel">
+        <div>Vida: <span id="health-value">100</span>%</div>
+        <div>Inventário: <span id="inventory-value">Nenhum</span></div>
+    </div>
+
+    <!-- Tela de Texto da História -->
+    <div id="text-display"></div>
+
+    <!-- Opções de Escolha -->
+    <div id="choices-container"></div>
+</div>
+
+<script>
+    // Estado do Jogo
+    let gameState = {
+        health: 100,
+        inventory: [],
+        currentScene: "inicio"
+    };
+
+    // Base de Dados de Cenas e Consequências
+    const story = {
+        inicio: {
+            text: "Você acorda na entrada de uma floresta escura e nublada. À sua frente, há uma trilha principal que se divide em duas direções: um caminho que desce em direção a uma caverna sombria e outro que sobe uma colina enevoada.",
+            choices: [
+                { text: "Seguir em direção à caverna", nextScene: "caverna" },
+                { text: "Subir a colina enevoada", nextScene: "colina" }
+            ]
+        },
+        caverna: {
+            text: "A caverna é úmida e o som de gotas d'água ecoa nas paredes. No chão, você encontra uma <span class='highlight'>Espada Velha</span> caída perto de um esqueleto. Mais adiante, você ouve um rosnado baixo.",
+            choices: [
+                { text: "Pegar a espada e investigar o rosnado", nextScene: "combate_lobo", action: () => { gameState.inventory.push("Espada"); } },
+                { text: "Ignorar a espada e correr de volta para a trilha", nextScene: "inicio" }
+            ]
+        },
+        colina: {
+            text: "No topo da colina, o vento sopra forte. Você encontra uma cabana de madeira abandonada. Há uma poção vermelha brilhando na janela e uma ponte de cordas velha que cruza um desfiladeiro.",
+            choices: [
+                { text: "Entrar na cabana e beber a poção", nextScene: "pocao" },
+                { text: "Atravessar a perigosa ponte de cordas", nextScene: "ponte" }
+            ]
+        },
+        combate_lobo: {
+            text: "Um lobo selvagem de olhos vermelhos pula das sombras! Como você pegou a <span class='highlight'>Espada Velha</span>, consegue se defender, mas o bicho arranha seu braço antes de fugir.",
+            choices: [
+                { text: "Continuar explorando o fundo da caverna", nextScene: "tesouro", action: () => { gameState.health -= 30; } }
+            ]
+        },
+        pocao: {
+            text: "A poção tinha um gosto doce de frutas silvestres! Você sente uma energia mágica correndo pelas suas veias. Suas feridas se fecham e sua percepção aumenta.",
+            choices: [
+                { text: "Voltar e ir em direção à ponte de cordas", nextScene: "ponte", action: () => { gameState.health = Math.min(gameState.health + 20, 100); gameState.inventory.push("Pingente Mágico"); } }
+            ]
+        },
+        ponte: {
+            text: "Enquanto você atravessa a ponte, uma corda arrebenta! Você precisa de equilíbrio ou de um amuleto de proteção para não cair no abismo.",
+            choices: [
+                { 
+                    text: "Tentar se equilibrar e correr para o outro lado", 
+                    nextScene: "fim_ruim", 
+                    condition: () => !gameState.inventory.includes("Pingente Mágico"),
+                    alternativeScene: "fim_bom" 
+                }
+            ]
+        },
+        tesouro: {
+            text: "No fundo da caverna, você encontra um baú antigo cheio de moedas de ouro e joias preciosas. Você sobreviveu aos perigos e ficou rico! Parabéns, você venceu!",
+            choices: [
+                { text: "Jogar Novamente", nextScene: "reset" }
+            ]
+        },
+        fim_bom: {
+            text: "O <span class='highlight'>Pingente Mágico</span> que você achou na cabana começa a brilhar, criando uma leve barreira de vento que te joga em segurança no outro lado da ponte. Você encontrou a saída da floresta mística! Vitória!",
+            choices: [
+                { text: "Jogar Novamente", nextScene: "reset" }
+            ]
+        },
+        fim_ruim: {
+            text: "Sem proteção ou reflexos rápidos o suficiente, a ponte despenca e você cai no fundo do desfiladeiro. Fim de jogo.",
+            choices: [
+                { text: "Tentar Novamente", nextScene: "reset" }
+            ]
+        }
+    };
+
+    // Atualiza os elementos visuais na tela
+    function updateScreen() {
+        // Reiniciar o jogo se necessário
+        if (gameState.currentScene === "reset") {
+            gameState.health = 100;
+            gameState.inventory = [];
+            gameState.currentScene = "inicio";
+        }
+
+        const scene = story[gameState.currentScene];
+
+        // Atualiza painel de status
+        document.getElementById("health-value").innerText = gameState.health;
+        document.getElementById("inventory-value").innerText = gameState.inventory.length > 0 ? gameState.inventory.join(", ") : "Nenhum";
+
+        // Verifica se o jogador morreu por perda de vida
+        if (gameState.health <= 0) {
+            document.getElementById("text-display").innerHTML = "Você ficou fraco demais para continuar e desmaiou na escuridão. Fim de jogo.";
+            const container = document.getElementById("choices-container");
+            container.innerHTML = "";
+            let btn = document.createElement("button");
+            btn.innerText = "Tentar Novamente";
+            btn.onclick = () => { gameState.currentScene = "reset"; updateScreen(); };
+            container.appendChild(btn);
+            return;
+        }
+
+        // Atualiza texto da narrativa
+        document.getElementById("text-display").innerHTML = scene.text;
+
+        // Limpa e recria os botões de escolha
+        const container = document.getElementById("choices-container");
+        container.innerHTML = "";
+
+        scene.choices.forEach(choice => {
+            let targetScene = choice.nextScene;
+            
+            // Condicional de cena (Ex: Se tiver o pingente, vai para o final bom)
+            if (choice.condition && !choice.condition()) {
+                targetScene = choice.alternativeScene;
+            }
+
+            let btn = document.createElement("button");
+            btn.innerText = choice.text;
+            btn.onclick = () => {
+                if (choice.action) choice.action();
+                gameState.currentScene = targetScene;
+                updateScreen();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    // Inicia o jogo na primeira execução
+    updateScreen();
+</script>
+
+</body>
+</html>
